@@ -20,6 +20,9 @@ def aggregationmethod(collection):
         {"$match": { 
             "count": {"$gt": 1}
             }
+        },
+        {
+            "$merg"
         },{
         "$project":{
             "_id":0,
@@ -30,7 +33,12 @@ def aggregationmethod(collection):
     results = collection.aggregate(aggregation_conditions)
 
     for r in results:
-        print(r)
+    #    data = collection.aggregate([
+    #         {"$match":{
+    #             "_id":{"$in":r.uniqueIds}
+    #         }}
+    #     ])
+       print(r)
 
 
 
