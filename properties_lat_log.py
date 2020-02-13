@@ -15,74 +15,51 @@ db = client['jacaranda-db']
 
 
 def google_map_api_call(properties_result):
-    if all(key in properties_result for key in ('country', 'district')):
-        district = properties_result['district']
-        district = district.replace(" ", "+")
-        country = properties_result['country']
-        api_key = 'AIzaSyAy1Z3e2qtLg7IvpEiMcObLfHUH9HrWcYE'
-        url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + \
-            district+',+'+country+',+'+'&key='+api_key
-        # print(url)
-    elif 'district' in properties_result:
-        district = properties_result['district']
-        district = district.replace(" ", "+")
-        api_key = 'AIzaSyAy1Z3e2qtLg7IvpEiMcObLfHUH9HrWcYE'
-        url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + \
-            district+',+'+'&key='+api_key
-        # print(url)
-    elif 'country' in properties_result:
-        country = properties_result['country']
-        country = country.replace(" ", "+")
-        api_key = 'AIzaSyAy1Z3e2qtLg7IvpEiMcObLfHUH9HrWcYE'
-        url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + \
-            country+',+'+'&key='+api_key
-        # print(url)
-        # print(url)
+
+    address = properties_result['address']
+    address = address.replace(' ', '+')
+    api_key = 'AIzaSyAy1Z3e2qtLg7IvpEiMcObLfHUH9HrWcYE'
+    url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' \
+        + address + ',+' + '&key=' + api_key
 
     properties_location_obj = requests.get(url)
     lat_long_Json = properties_location_obj.json()
-    print(lat_long_Json)
+    return lat_long_Json
 
 
 def properties_lat_log(collection):
-    my_doc = collection.aggregate([{
-        "$group": {
-            "_id": 0,
-            "location": {
-                "$addToSet": {
-                    "country": '$country',
-                    "district": "$district"
-                }
-            }
-        }}, {
-            "$project": {
-                "_id": 0,
-                "location": 1
-            }
-    }
-    ])
+    properties_doc = collection.find({'$or': [{'address': {'$ne': 'null'
+            }, 'address': {'$exists': 'false'}}]}, {'address': 1,
+            '_id': 1})
 
-    location = list(my_doc)
-    properties = location[0]['location']
+    for properties_result in properties_doc:
 
-    for properties_result in properties:
-        time.sleep(5)
-        google_map_api_call(properties_result)
+        # time.sleep(5)
 
-    # properties_lat_long_result = lat_long_Json['results']
-    # search_query = {"_id": properties_result["_id"]}
-    # for lat_long in properties_lat_long_result:
-    #     update_query = {
-    #         "$set": {"property_location": lat_long['geometry']['location']}
-    #     }
+        lat_long_result = google_map_api_call(properties_result)
+        properties_lat_long_result = lat_long_result['results']
+        search_query = {'_id': properties_result['_id']}
+        for lat_long in properties_lat_long_result:
+            update_query = {'$set': {'coordinates': lat_long['geometry'
+                            ]['location']}}
 
-    #     # to update the collection to specific property
+            # to update the collection to specific property
 
-    #     result = collection.find_one_and_update(
-    #         search_query, update_query
-    #     )
+            result = collection.find_one_and_update(search_query,
+                    update_query, {
+                '_id': 1,
+                'title': 1,
+                'coordinates': 1,
+                'address': 1,
+                })
+
+            # result = collection.find_and_modify(search_query, update_query,{"new":"true"})
+
+            print(result)
 
 
 collection = db.formatted_properties
 
 properties_lat_log(collection)
+
+		
